@@ -26,15 +26,20 @@ lipo -create "dist/${BINARY}-swift-arm64" "dist/${BINARY}-swift-x64" \
 rm "dist/${BINARY}-swift-arm64" "dist/${BINARY}-swift-x64"
 
 echo "==> Generating ICNS icon..."
+# Add ~15% padding so the icon matches standard macOS Dock visual weight
+sips -z 880 880 assets/codex-color.png --out /tmp/ccb-inner.png > /dev/null
+sips -p 1024 1024 /tmp/ccb-inner.png --out /tmp/ccb-padded.png > /dev/null
+ICON_SRC="/tmp/ccb-padded.png"
 ICONSET="dist/AppIcon.iconset"
 rm -rf "${ICONSET}"
 mkdir -p "${ICONSET}"
 for size in 16 32 128 256 512; do
-  sips -z $size $size assets/codex-color.png \
+  sips -z $size $size "${ICON_SRC}" \
     --out "${ICONSET}/icon_${size}x${size}.png"           > /dev/null
-  sips -z $((size*2)) $((size*2)) assets/codex-color.png \
+  sips -z $((size*2)) $((size*2)) "${ICON_SRC}" \
     --out "${ICONSET}/icon_${size}x${size}@2x.png"        > /dev/null
 done
+rm -f /tmp/ccb-inner.png /tmp/ccb-padded.png
 iconutil -c icns "${ICONSET}" -o "dist/AppIcon.icns"
 rm -rf "${ICONSET}"
 

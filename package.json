@@ -1,12 +1,15 @@
 {
   "name": "codex-copilot-bridge",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Route OpenAI Codex through your GitHub Copilot subscription",
   "main": "index.js",
   "bin": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "pkg . --targets node18-win-x64 --output dist/codex-copilot-bridge.exe"
+    "build:win": "pkg . --targets node18-win-x64 --output dist/codex-copilot-bridge.exe",
+    "build:mac-arm64": "pkg . --targets node20-macos-arm64 --output dist/codex-copilot-bridge-mac-arm64",
+    "build:mac-x64": "pkg . --targets node20-macos-x64 --output dist/codex-copilot-bridge-mac-x64",
+    "build:mac": "npm run build:mac-arm64 && npm run build:mac-x64"
   },
   "pkg": {
     "assets": [

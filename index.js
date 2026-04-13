@@ -2,11 +2,26 @@ const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
+const { execSync, spawn } = require("child_process");
 
 // ─── Browser detection ─────────────────────────────────────────────────────
 function findBrowser() {
-  // Try Edge and Chrome common paths, then PATH
+  if (process.platform === "darwin") {
+    const home = process.env.HOME || "";
+    const candidates = [
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+      "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+      "/Applications/Arc.app/Contents/MacOS/Arc",
+      path.join(home, "Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
+      path.join(home, "Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"),
+    ];
+    for (const p of candidates) {
+      if (fs.existsSync(p)) return p;
+    }
+    return null; // fallback to open(1)
+  }
+  // Windows
   const candidates = [
     process.env["ProgramFiles(x86)"] && path.join(process.env["ProgramFiles(x86)"], "Microsoft\\Edge\\Application\\msedge.exe"),
     process.env.ProgramFiles && path.join(process.env.ProgramFiles, "Microsoft\\Edge\\Application\\msedge.exe"),
@@ -17,20 +32,29 @@ function findBrowser() {
   for (const p of candidates) {
     if (fs.existsSync(p)) return p;
   }
-  // Try PATH
   for (const cmd of ["msedge", "chrome"]) {
     try { const r = execSync(`where ${cmd}`, { stdio: "pipe" }).toString().trim().split("\n")[0]; if (r) return r.trim(); } catch {}
   }
-  return null; // fallback to system default
+  return null;
 }
 
 const BROWSER_PATH = findBrowser();
 
 function openAppWindow(url) {
-  if (BROWSER_PATH) {
-    execSync(`start "" "${BROWSER_PATH}" --app=${url} --window-size=420,500`, { stdio: "ignore", shell: true });
+  if (process.platform === "darwin") {
+    if (BROWSER_PATH) {
+      spawn(BROWSER_PATH, [`--app=${url}`, "--window-size=420,560", "--no-default-browser-check"], {
+        detached: true, stdio: "ignore",
+      }).unref();
+    } else {
+      spawn("open", [url], { detached: true, stdio: "ignore" }).unref();
+    }
   } else {
-    execSync(`start "" "${url}"`, { stdio: "ignore", shell: true });
+    if (BROWSER_PATH) {
+      execSync(`start "" "${BROWSER_PATH}" --app=${url} --window-size=420,560`, { stdio: "ignore", shell: true });
+    } else {
+      execSync(`start "" "${url}"`, { stdio: "ignore", shell: true });
+    }
   }
 }
 
@@ -103,8 +127,10 @@ function writeCodexConfig() {
 
   fs.writeFileSync(CODEX_CONFIG, out);
 
-  // Set user-level env var so new terminals pick it up
-  try { execSync('setx OPENAI_API_KEY PROXY_MANAGED', { stdio: "ignore" }); } catch {}
+  // Set user-level env var so new terminals pick it up (Windows only)
+  if (process.platform === "win32") {
+    try { execSync('setx OPENAI_API_KEY PROXY_MANAGED', { stdio: "ignore" }); } catch {}
+  }
   console.log("[Bridge] Codex config injected");
 }
 
@@ -121,8 +147,10 @@ function restoreCodexConfig() {
   } else if (fs.existsSync(CODEX_CONFIG)) {
     fs.unlinkSync(CODEX_CONFIG);
   }
-  // Remove the env var we set
-  try { execSync('REG DELETE "HKCU\\Environment" /v OPENAI_API_KEY /f', { stdio: "ignore" }); } catch {}
+  // Remove the env var we set (Windows only)
+  if (process.platform === "win32") {
+    try { execSync('REG DELETE "HKCU\\Environment" /v OPENAI_API_KEY /f', { stdio: "ignore" }); } catch {}
+  }
   console.log("[Bridge] Codex config restored");
 }
 
@@ -238,7 +266,11 @@ const ui = http.createServer(async (req, res) => {
     const chunks = []; for await (const c of req) chunks.push(c);
     const { url } = JSON.parse(Buffer.concat(chunks).toString());
     if (url && url.startsWith("https://")) {
-      execSync(`start "" "${url}"`, { stdio: "ignore", shell: true });
+      if (process.platform === "darwin") {
+        spawn("open", [url], { detached: true, stdio: "ignore" }).unref();
+      } else {
+        execSync(`start "" "${url}"`, { stdio: "ignore", shell: true });
+      }
     }
     res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ ok: true })); return;
   }
@@ -247,8 +279,13 @@ const ui = http.createServer(async (req, res) => {
     res.writeHead(200, { "Content-Type": "image/png" }); res.end(icon); return;
   }
   if (req.url === "/favicon.ico") {
-    const icon = fs.readFileSync(path.join(__dirname, "bridge-icon.ico"));
-    res.writeHead(200, { "Content-Type": "image/x-icon" }); res.end(icon); return;
+    if (process.platform === "win32") {
+      const icon = fs.readFileSync(path.join(__dirname, "bridge-icon.ico"));
+      res.writeHead(200, { "Content-Type": "image/x-icon" }); res.end(icon); return;
+    } else {
+      const icon = fs.readFileSync(path.join(__dirname, "codex-color.png"));
+      res.writeHead(200, { "Content-Type": "image/png" }); res.end(icon); return;
+    }
   }
   if (req.url === "/manifest.json") {
     res.writeHead(200, { "Content-Type": "application/manifest+json" });

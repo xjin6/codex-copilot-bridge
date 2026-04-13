@@ -127,9 +127,11 @@ function writeCodexConfig() {
 
   fs.writeFileSync(CODEX_CONFIG, out);
 
-  // Set user-level env var so new terminals pick it up (Windows only)
+  // Set user-level env var so new terminals pick it up
   if (process.platform === "win32") {
     try { execSync('setx OPENAI_API_KEY PROXY_MANAGED', { stdio: "ignore" }); } catch {}
+  } else if (process.platform === "darwin") {
+    try { execSync('launchctl setenv OPENAI_API_KEY PROXY_MANAGED', { stdio: "ignore" }); } catch {}
   }
   console.log("[Bridge] Codex config injected");
 }
@@ -147,9 +149,11 @@ function restoreCodexConfig() {
   } else if (fs.existsSync(CODEX_CONFIG)) {
     fs.unlinkSync(CODEX_CONFIG);
   }
-  // Remove the env var we set (Windows only)
+  // Remove the env var we set
   if (process.platform === "win32") {
     try { execSync('REG DELETE "HKCU\\Environment" /v OPENAI_API_KEY /f', { stdio: "ignore" }); } catch {}
+  } else if (process.platform === "darwin") {
+    try { execSync('launchctl unsetenv OPENAI_API_KEY', { stdio: "ignore" }); } catch {}
   }
   console.log("[Bridge] Codex config restored");
 }

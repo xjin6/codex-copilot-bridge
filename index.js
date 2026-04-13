@@ -343,18 +343,20 @@ testReq.on("error", () => {
   ui.listen(UI_PORT, () => {
     console.log(`[Bridge] UI on http://127.0.0.1:${UI_PORT}`);
     openBrowser();
-    // Heartbeat: track UI connections, exit when idle too long
-    let lastSeen = Date.now();
-    const origHandler = ui.listeners("request")[0];
-    ui.removeAllListeners("request");
-    ui.on("request", (req, res) => { lastSeen = Date.now(); origHandler(req, res); });
-    setInterval(() => {
-      if (Date.now() - lastSeen > 30000) {
-        console.log("[Bridge] No activity, shutting down");
-        if (bridgeEnabled) restoreCodexConfig();
-        process.exit(0);
-      }
-    }, 10000);
+    // Idle timeout only when running standalone (not managed by the .app wrapper)
+    if (!process.argv.includes("--no-open")) {
+      let lastSeen = Date.now();
+      const origHandler = ui.listeners("request")[0];
+      ui.removeAllListeners("request");
+      ui.on("request", (req, res) => { lastSeen = Date.now(); origHandler(req, res); });
+      setInterval(() => {
+        if (Date.now() - lastSeen > 30000) {
+          console.log("[Bridge] No activity, shutting down");
+          if (bridgeEnabled) restoreCodexConfig();
+          process.exit(0);
+        }
+      }, 10000);
+    }
   });
 });
 testReq.end();

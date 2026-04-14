@@ -9,7 +9,7 @@ This tool acts as a local proxy that lets [OpenAI Codex](https://openai.com/inde
 | Platform | Download | Size |
 |----------|----------|------|
 | **macOS** (Apple Silicon + Intel) | **[Codex Copilot Bridge.zip](https://github.com/xjin6/codex-copilot-bridge/releases/latest/download/Codex.Copilot.Bridge.zip)** | ~35 MB |
-| **Windows** | **[Codex Copilot Bridge.exe](https://github.com/xjin6/codex-copilot-bridge/releases/latest/download/Codex.Copilot.Bridge.exe)** | ~36 MB |
+| **Windows** | **[Codex Copilot Bridge.exe](https://github.com/xjin6/codex-copilot-bridge/releases/latest/download/Codex.Copilot.Bridge.exe)** | ~41 MB |
 
 No installation required. No dependencies. Just download and double-click.
 

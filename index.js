@@ -342,6 +342,11 @@ function openBrowser() {
 }
 
 const testReq = http.get(`http://127.0.0.1:${UI_PORT}/api/status`, () => {
+  // Already running — reopen the window
+  if (process.platform === "win32")
+    execSync(`start "" "http://127.0.0.1:${UI_PORT}"`, { stdio: "ignore", shell: true, windowsHide: true });
+  else
+    spawn("open", [`http://127.0.0.1:${UI_PORT}`], { detached: true, stdio: "ignore" }).unref();
   process.exit(0);
 });
 testReq.on("error", () => {
